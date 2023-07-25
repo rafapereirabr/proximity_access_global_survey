@@ -1,9 +1,4 @@
-# IDEs
-.idea/
-
-# Hugo
-/resources/
-public/
-jsconfig.json
-node_modules/
 .Rproj.user
+*data_raw
+*.xlsx
+
