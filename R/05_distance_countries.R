@@ -6,7 +6,7 @@ library(ggplot2)
 library(ggstatsplot)
 library(ggsci)
 library(purrr)
-
+library(tidyr)
 
 # read data
 df <- fread(input = './data/global_data.csv')
@@ -63,48 +63,73 @@ plot1 <- ggplot(df3, aes(x = country, y = distance_values)) +
 
 # 4. ECDF plots ------------------------------------------------------------------
 
-# Create a data frame with all distance values from 0 to 10000 meters for each country
-full_data <- expand.grid(country = levels(df3$country),
-                         distance_values = seq(0, 10000, by = 100))
+# Create a table with hit counts for each country and distance
+hit_counts_table <- df3 %>%
+  group_by(country, distance_values) %>%
+  summarize(hit_count = n()) %>%
+  pivot_wider(names_from = distance_values, values_from = hit_count, values_fill = 0)
 
-# Compute the ECDF for each country
-ecdf_data <- full_data %>%
-  group_by(country) %>%
-  mutate(ecdf_values = ecdf(df3$distance_values[df3$country == country])(distance_values),
-         ecdf_percent = ecdf_values * 100)  # Scale to percentages
+# Create a new table for cumulative hits and make it a data frame
+cumulative_hits_table <- hit_counts_table
+cumulative_hits_table <- as.data.frame(cumulative_hits_table)
 
-# Calculate the AUC for each country
-auc_values <- ecdf_data %>%
-  split(.$country) %>%
-  map_dbl(~ with(., sum(diff(distance_values) * ecdf_percent[-1])))
+# Loop through each row (country) and calculate cumulative hits
+for (i in 1:nrow(cumulative_hits_table)) {
+  for (j in 3:ncol(cumulative_hits_table)) {
+    cumulative_hits_table[i, j] <- as.double(cumulative_hits_table[i, j] + cumulative_hits_table[i, j - 1])
+  }
+}
 
-# Calculate the AUC of the triangle (above the diagonal line from (0,0) to (10000,100))
-triangle_area <- 0.5 * 10000 * 100
+# Loop through each row (country) and calculate relative cumulative value because cumsum did not work
+for (i in 1:nrow(cumulative_hits_table)) {
+  for (j in 2:ncol(cumulative_hits_table)) {
+    cumulative_hits_table[i, j] <- cumulative_hits_table[i, j] / cumulative_hits_table[i, ncol(cumulative_hits_table)]
+  }
+}
 
-# Compare the AUC of each country to the AUC of the triangle and normalize
-normalized_auc <- (auc_values - triangle_area) / triangle_area
+# Function to calculate AUC by multiplying distance width and cumulative percentage
+calculate_auc <- function(cumulative_percentages) {
+  # Calculate the width of each known class (distance)
+  class_widths <- c(400, 400, 400, 400, 2600, 5000)
 
-# Create a data frame with the results
-comparison_result <- data.frame(country = levels(df3$country),
-                                Normalized_AUC = normalized_auc)
+  # Multiply distance width by cumulative percentage at each step
+  auc_value <- sum(class_widths * cumulative_percentages[-length(cumulative_percentages)])
 
-# Convert the "country" column to a factor and set the levels based on the normalized AUC
-comparison_result$country <- factor(comparison_result$country,
-                                    levels = comparison_result$country[order(comparison_result$Normalized_AUC, decreasing = TRUE)])
+  return(auc_value)
+}
 
-# Print the comparison result with normalized AUC
-print(comparison_result)
+# Calculate AUC for each country
+cumulative_auc_table <- cumulative_hits_table %>%
+  mutate(auc_value = apply(.[, -1], 1, calculate_auc))
 
-# Create plots per country using ggplot with fill below ECDF curve
-plot2 <- ggplot(ecdf_data, aes(x = distance_values, y = ecdf_percent, fill = country)) +
+# Calculate the shape factor, the number 5000 is derived from the area under the straight diagonal
+cumulative_auc_table$shape_factor <- (cumulative_auc_table$auc_value - 5000) / 5000
+
+
+# Convert cumulative_hits_table to long format for plotting
+cumulative_hits_long <- cumulative_hits_table %>%
+  pivot_longer(cols = -country, names_to = "distance", values_to = "cumulative_percentage")
+
+# Merge cumulative_hits_long with cumulative_auc_table to include the shape factor
+cumulative_plot_data <- merge(cumulative_hits_long, cumulative_auc_table, by = "country")
+
+# Plot the ECDF for each country using ggplot2 and facet_wrap
+ecdf_plot <- ggplot(cumulative_plot_data, aes(x = as.numeric(distance), y = cumulative_percentage)) +
   geom_step() +
-  geom_ribbon(aes(ymax = ecdf_percent), ymin = 0, alpha = 0.2) +
   labs(title = "Cumulative Distance Distribution by Country",
        y = "Cumulative Proportion",
-       x = "Distance (Percent of Responses)") +
-  facet_wrap(~country, ncol = 6, scales = "free_y") +  # Set custom y-axis limit for each plot and increase ncol
+       x = "Distance") +
+  facet_wrap(~country, ncol = 3, scales = "free_y") +
   theme_minimal() +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())   # Hide x-axis labels and ticks
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  # Add shape factor text to each plot
+  geom_text(aes(x = Inf, y = 0.2, label = sprintf("%.2f", shape_factor)),
+            hjust = 1.5, vjust = 0, size = 8)
 
-print (plot1)
-print (plot2)
+# 5. Create files and print stuff  --------------------------------------------
+
+print(hit_counts_table, n=22)
+print(cumulative_hits_table)
+print(cumulative_auc_table)
+print(plot1)
+print(ecdf_plot)
