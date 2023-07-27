@@ -42,6 +42,10 @@ summary_stats <- df3 %>%
                    total_professionals = n()
   )
 
+# Calculate the weighted means for each country from the summary_stats dataframe
+weighted_means <- summary_stats %>%
+  arrange(desc(weighted_mean_distance))  # Sort the summary_stats dataframe by weighted_mean_distance
+
 
 # 3. Box plots --------------------------------------------------------------
 
