@@ -46,6 +46,22 @@ summary_stats <- df3 %>%
 weighted_means <- summary_stats %>%
   arrange(desc(weighted_mean_distance))  # Sort the summary_stats dataframe by weighted_mean_distance
 
+# 2.1 Make a CSV with continents
+
+# Add the "continent" column based on the "country" column and the country_continent_mapping data frame
+country_continent_mapping <- data.frame(
+  country = c("ARGENTINA", "BRAZIL", "CANADA", "CHILE", "CHINA", "FINLAND", "FRANCE", "GERMANY",
+              "GREECE", "HUNGARY", "ISRAEL", "ITALY", "KENYA", "NETHERLANDS", "NORWAY", "POLAND",
+              "PORTUGAL", "SPAIN", "TUNISIA", "TURKEY", "URUGUAY", "USA"),
+  continent = c("South America", "South America", "North America", "South America", "Asia", "Europe", "Europe",
+                "Europe", "Europe", "Europe", "Asia", "Europe", "Africa", "Europe", "Europe", "Europe", "Europe",
+                "Europe", "Africa", "Asia", "South America", "North America")
+)
+
+summary_stats <- merge(summary_stats, country_continent_mapping, by = "country")
+
+# Save the resulting data frame as a CSV file
+write.csv(summary_stats, file = "./data/distances_basic_data_geographical.csv", row.names = FALSE)
 
 # 3. Box plots --------------------------------------------------------------
 
@@ -87,6 +103,7 @@ for (i in 1:nrow(cumulative_hits_table)) {
   }
 }
 
+
 # Function to calculate AUC by multiplying distance width and cumulative percentage
 calculate_auc <- function(cumulative_percentages) {
   # Calculate the width of each known class (distance)
@@ -105,21 +122,33 @@ cumulative_auc_table <- cumulative_hits_table %>%
 # Calculate the shape factor, the number 5000 is derived from the area under the straight diagonal
 cumulative_auc_table$shape_factor <- (cumulative_auc_table$auc_value - 5000) / 5000
 
+# Add the 10k column before renaming column names (they are upper limits of each class)
+cumulative_hits_table$new_10000 <- cumulative_hits_table$`10000`
+
+# Rename the columns to match the desired distances
+colnames(cumulative_hits_table)[-1] <- c(0, 400, 800, 1200, 1600, 2400, 5000, 10000)
+
 
 # Convert cumulative_hits_table to long format for plotting
 cumulative_hits_long <- cumulative_hits_table %>%
   pivot_longer(cols = -country, names_to = "distance", values_to = "cumulative_percentage")
 
+
 # Merge cumulative_hits_long with cumulative_auc_table to include the shape factor
 cumulative_plot_data <- merge(cumulative_hits_long, cumulative_auc_table, by = "country")
 
+# Keep only the necessary columns for plotting
+cumulative_plot_data <- cumulative_plot_data %>%
+  select(country, distance, cumulative_percentage,shape_factor)
+
 # Plot the ECDF for each country using ggplot2 and facet_wrap
 ecdf_plot <- ggplot(cumulative_plot_data, aes(x = as.numeric(distance), y = cumulative_percentage)) +
+  geom_step(aes(y = 0), linetype = "blank") +  # Add a starting point at y = 0
   geom_step() +
   labs(title = "Cumulative Distance Distribution by Country",
        y = "Cumulative Proportion",
        x = "Distance") +
-  facet_wrap(~country, ncol = 3, scales = "free_y") +
+  facet_wrap(~country, ncol = 3, scales = "fixed") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   # Add shape factor text to each plot
@@ -133,3 +162,4 @@ print(cumulative_hits_table)
 print(cumulative_auc_table)
 print(plot1)
 print(ecdf_plot)
+
