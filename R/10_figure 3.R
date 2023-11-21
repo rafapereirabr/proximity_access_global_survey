@@ -34,13 +34,26 @@ df_combined <- rbind(df_expert, df_global)
 df_combined$row <- "All"
 
 # Let's try some plotting
-# For now I took the greyscale.
+# For now I took the greyscale, and forced the order of bars. Reversed the legend.
 
-figure_3_plot <- ggplot(df_combined, aes(x=factor(type,level=c("Practitioner", "Expert")), fill=factor(distance_thresholds))) +
+figure_3_plot_stackedbar <- ggplot(df_combined, aes(x=factor(type,level=c("Practitioner", "Expert")), fill=factor(distance_thresholds))) +
   geom_bar(position = position_fill(reverse=TRUE)) +
   theme_bw() +
   scale_fill_grey(guide=guide_legend(reverse=TRUE))+
   labs(y="Proportion of repsonses", x="Type of respondent")
 
-print(figure_3_plot)
+print(figure_3_plot_stackedbar)
+
+figure_3_plot_pie <- ggplot() +
+  geom_bar(data=df_combined, aes(x="", fill=factor(distance_thresholds)), position = position_fill())+
+  coord_polar(theta="y", direction=-1)+
+  facet_grid(.~ factor(type, level=c("Practitioner","Expert")))+
+  theme_bw()+
+  scale_fill_grey()+
+  labs(y="", x="", fill="distance class upper limit (m)")+
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank(), axis.text.x = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor =element_blank())
+
+
+print(figure_3_plot_pie)
 
