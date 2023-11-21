@@ -32,21 +32,15 @@ df_global <- df_global[2:3]
 
 df_combined <- rbind(df_expert, df_global)
 df_combined$row <- "All"
-#Let's try some plotting
 
-figure_3_plot <- ggplot(df_combined, aes(x=type, fill=factor(distance_thresholds))) +
+# Let's try some plotting
+# For now I took the greyscale.
+
+figure_3_plot <- ggplot(df_combined, aes(x=factor(type,level=c("Practitioner", "Expert")), fill=factor(distance_thresholds))) +
   geom_bar(position = position_fill(reverse=TRUE)) +
   theme_bw() +
   scale_fill_grey(guide=guide_legend(reverse=TRUE))+
-  labs(y="Proportion of repsonses")
-
-figure_3_plot_combined <- ggplot() +
-  geom_bar(data = df_combined, aes(x=row, fill=factor(distance_thresholds)), position =position_fill(reverse=TRUE)) +
-  geom_bar(data = df_combined, aes(x=type, fill=factor(distance_thresholds)), position = position_fill(reverse=TRUE)) +
-  theme_bw() +
-  scale_fill_grey(guide=guide_legend(reverse=TRUE))+
-  labs(y="Proportion of responses")
+  labs(y="Proportion of repsonses", x="Type of respondent")
 
 print(figure_3_plot)
-print(figure_3_plot_combined)
 
