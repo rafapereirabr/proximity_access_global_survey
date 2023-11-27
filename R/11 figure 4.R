@@ -79,7 +79,7 @@ figure_4_plot_stackedbar <- ggplot() +
                             "6" = cs_conv[6,2]))+
   theme_bw()+
   theme(axis.text.x=element_text(angle=20,hjust=1))+
-  labs(y="Proportion of repsonses", x="City Size", fill="distance class upper limit")+
+  labs(y="Proportion of repsonses", x="City Size", fill="proximity distance (m)")+
   scale_fill_grey(guide=guide_legend(reverse=TRUE))
 
 # I had to use an index to get all bars into one graph in the right order, and added 1 because '1' was already taken by 'all replies'.

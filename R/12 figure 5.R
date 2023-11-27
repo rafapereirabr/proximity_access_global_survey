@@ -90,13 +90,13 @@ df_global <- inner_join(df_global, df_cont.labs, by=c("continents"="cont.numbers
 summarydata_cutoff <- inner_join(summarydata_cutoff,df_cont.labs, by=c("continents"="cont.numbers"))
 summarydata_cutoff <- summarydata_cutoff[order(summarydata_cutoff$cumrel),]
 
-# We now renumber the continents from 1 to 7
+# We now renumber the continents from 1 to 7, if you want to reverse it, make it 7:1
 
-summarydata_cutoff$continents2 <- 1:7
+summarydata_cutoff$graph_order <- 1:7
 
 # And reassign these new numbers to the df_global table
 
-df_global <- merge(df_global, select(summarydata_cutoff, continents, continents2),
+df_global <- merge(df_global, select(summarydata_cutoff, continents, graph_order),
                 by.x = "continents",
                 by.y = "continents",
                 all.x = TRUE,
@@ -104,34 +104,34 @@ df_global <- merge(df_global, select(summarydata_cutoff, continents, continents2
 
 # Also reassign these new numbers to the df_cont.labs dataframe for the labels
 
-df_cont.labs <- merge(df_cont.labs, select(summarydata_cutoff, continents, continents2),
+df_cont.labs <- merge(df_cont.labs, select(summarydata_cutoff, continents, graph_order),
                       by.x = "cont.numbers",
                       by.y = "continents",
                       all.x = TRUE,
                       sort = FALSE)
 
-df_cont.labs$continents2[df_cont.labs$cont.numbers == 0] <- 0 # The "All" label
+df_cont.labs$graph_order[df_cont.labs$cont.numbers == 0] <- 0 # Add the "All" label
 
-df_cont.labs <- df_cont.labs[order(df_cont.labs$continents2),] # Now they are in order of the 1200 meter cumulative percentile
+df_cont.labs <- df_cont.labs[order(df_cont.labs$graph_order),] # Now they are in order of the 1200 meter cumulative percentile
 
 
-# The plotting begins
+# The plotting begins. The discrete labels are based on the re-ordering by 1200 meter mark.
 
 plot_5_stacked_bars <- ggplot(data=df_global, x=fct_reorder(cont.labs,factor(cumrel)))+
   geom_bar(data=df_global, aes(x=factor(firstbar), fill=factor(distance_thresholds)), position=position_fill(reverse=TRUE), width = 0.9)+
-  geom_bar(data=df_global, aes(x=factor(continents2), fill=factor(distance_thresholds)), position=position_fill(reverse=TRUE), width = 0.5)+
+  geom_bar(data=df_global, aes(x=factor(graph_order), fill=factor(distance_thresholds)), position=position_fill(reverse=TRUE), width = 0.5)+
   theme_bw() +
-  scale_x_discrete(labels=c("0" = df_cont.labs[1,2],
-                            "1" = df_cont.labs[2,2],
-                            "2" = df_cont.labs[3,2],
-                            "3" = df_cont.labs[4,2],
+  scale_x_discrete(labels=c("0" = df_cont.labs[1,2],  #If someone knows how
+                            "1" = df_cont.labs[2,2],  #to make this more
+                            "2" = df_cont.labs[3,2],  #flexible, then please
+                            "3" = df_cont.labs[4,2],  #let's talk about it.
                             "4" = df_cont.labs[5,2],
                             "5" = df_cont.labs[6,2],
                             "6" = df_cont.labs[7,2],
                             "7" = df_cont.labs[8,2]))+
   scale_fill_grey(guide=guide_legend(reverse=TRUE))+
   theme(axis.text.x=element_text(angle=45,hjust=1))+
-  labs(y="Proportion of repsonses", x="Continent", fill="distance class upper limit")
+  labs(y="Proportion of repsonses", x="Continent", fill="proximity distance (m)")
 
 
 
